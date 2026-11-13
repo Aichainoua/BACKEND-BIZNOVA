@@ -4,47 +4,57 @@ namespace App\Features\Identity\Models;
 
 use App\Features\BusinessFinance\Models\Company;
 use App\Features\ProjectAnalysis\Models\Project;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'first_name', 'last_name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, Notifiable;
 
-    protected static function newFactory(): UserFactory
+    protected $table = 'utilisateur';
+
+    protected $primaryKey = 'id_utilisateur';
+
+    public const CREATED_AT = 'date_creation';
+    public const UPDATED_AT = 'date_modification';
+
+    protected $fillable = [
+        'nom',
+        'prenom',
+        'email',
+        'mot_de_passe_hash',
+    ];
+
+    protected $hidden = [
+        'mot_de_passe_hash',
+    ];
+
+    protected function casts(): array
     {
-        return UserFactory::new();
+        return [
+            'mot_de_passe_hash' => 'hashed',
+        ];
+    }
+
+    public function getAuthPasswordName(): string
+    {
+        return 'mot_de_passe_hash';
+    }
+
+    public function getAuthPassword(): string
+    {
+        return $this->mot_de_passe_hash;
     }
 
     public function projects(): HasMany
     {
-        return $this->hasMany(Project::class);
+        return $this->hasMany(Project::class, 'id_utilisateur', 'id_utilisateur');
     }
 
     public function companies(): HasMany
     {
-        return $this->hasMany(Company::class);
-    }
-
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->hasMany(Company::class, 'id_utilisateur', 'id_utilisateur');
     }
 }

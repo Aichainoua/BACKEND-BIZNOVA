@@ -9,22 +9,26 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sector extends Model
 {
+    protected $table = 'secteur';
+
+    protected $primaryKey = 'id_secteur';
+
     public $timestamps = false;
 
-    protected $fillable = ['code', 'label'];
+    protected $fillable = ['code', 'libelle'];
 
     public function categories(): HasMany
     {
-        return $this->hasMany(Category::class);
+        return $this->hasMany(Category::class, 'id_secteur', 'id_secteur');
     }
 
     public function companies(): HasMany
     {
-        return $this->hasMany(Company::class);
+        return $this->hasMany(Company::class, 'id_secteur', 'id_secteur');
     }
 
     public function projects(): HasMany
     {
-        return $this->hasMany(Project::class);
+        return $this->hasMany(Project::class, 'id_secteur', 'id_secteur');
     }
 }

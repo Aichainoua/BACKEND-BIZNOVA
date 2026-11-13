@@ -7,31 +7,38 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProjectFunding extends Model
 {
+    protected $table = 'financement_projet';
+    protected $primaryKey = 'id_financement';
+
+    public $timestamps = false;
+
     protected $fillable = [
-        'project_id',
-        'personal_contribution',
-        'non_loan_funding',
-        'loan_amount',
-        'annual_interest_rate',
-        'loan_duration_months',
-        'repayment_frequency',
-        'deferment_months',
+        'id_projet',
+        'investissement_initial_total',
+        'apport_personnel',
+        'financement_hors_emprunt',
+        'montant_emprunt',
+        'taux_interet_annuel',
+        'duree_emprunt_mois',
+        'frequence_remboursement',
+        'differe_mois',
     ];
 
     protected function casts(): array
     {
         return [
-            'personal_contribution' => 'decimal:2',
-            'non_loan_funding' => 'decimal:2',
-            'loan_amount' => 'decimal:2',
-            'annual_interest_rate' => 'decimal:4',
-            'loan_duration_months' => 'integer',
-            'deferment_months' => 'integer',
+            'investissement_initial_total' => 'decimal:2',
+            'apport_personnel' => 'decimal:2',
+            'financement_hors_emprunt' => 'decimal:2',
+            'montant_emprunt' => 'decimal:2',
+            'taux_interet_annuel' => 'decimal:4',
+            'duree_emprunt_mois' => 'integer',
+            'differe_mois' => 'integer',
         ];
     }
 
     public function project(): BelongsTo
     {
-        return $this->belongsTo(Project::class);
+        return $this->belongsTo(Project::class, 'id_projet', 'id_projet');
     }
 }

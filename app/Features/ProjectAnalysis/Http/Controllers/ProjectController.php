@@ -19,39 +19,80 @@ class ProjectController extends Controller
         $user = Auth::user();
 
         return ProjectResource::collection(
-            $user->projects()->latest('id')->paginate(15),
+            $user->projects()
+                ->latest('date_creation')
+                ->paginate(15)
         );
     }
 
     public function store(StoreProjectRequest $request): JsonResponse
     {
         $user = Auth::user();
-        $project = $user->projects()->create($request->validated());
+        $data = $request->validated();
 
-        return (new ProjectResource($project))->response()->setStatusCode(201);
+        $project = $user->projects()->create([
+            'id_secteur' => $data['sector_id'],
+            'nom' => $data['name'],
+            'date_lancement' => $data['launch_date'],
+            'horizon_mois' => $data['horizon_months'] ?? 12,
+            'pays' => $data['country'] ?? null,
+            'devise' => $data['currency'] ?? 'XAF',
+            'mode_activite' => $data['activity_mode'],
+        ]);
+
+        return (new ProjectResource($project))
+            ->response()
+            ->setStatusCode(201);
     }
 
     public function show(Project $project): ProjectResource
     {
-        $user = Auth::user();
-        $project = $user->projects()->findOrFail($project->id);
+        $project = Auth::user()
+            ->projects()
+            ->findOrFail($project->id_projet);
 
         return new ProjectResource($project);
     }
 
-    public function update(UpdateProjectRequest $request, Project $project): ProjectResource
-    {
-        $user = Auth::user();
-        $project = $user->projects()->findOrFail($project->id);
-        $project->update($request->validated());
+    public function update(
+        UpdateProjectRequest $request,
+        Project $project
+    ): ProjectResource {
+        $project = Auth::user()
+            ->projects()
+            ->findOrFail($project->id_projet);
+
+        $data = $request->validated();
+
+        $mapping = [
+            'sector_id' => 'id_secteur',
+            'name' => 'nom',
+            'launch_date' => 'date_lancement',
+            'horizon_months' => 'horizon_mois',
+            'country' => 'pays',
+            'currency' => 'devise',
+            'activity_mode' => 'mode_activite',
+        ];
+
+        $updates = [];
+
+        foreach ($mapping as $apiField => $databaseField) {
+            if (array_key_exists($apiField, $data)) {
+                $updates[$databaseField] = $data[$apiField];
+            }
+        }
+
+        $project->update($updates);
 
         return new ProjectResource($project->refresh());
     }
 
     public function destroy(Project $project): Response
     {
-        $user = Auth::user();
-        $user->projects()->findOrFail($project->id)->delete();
+        Auth::user()
+            ->projects()
+            ->findOrFail($project->id_projet)
+            ->delete();
 
         return response()->noContent();
     }
