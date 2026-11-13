@@ -10,16 +10,20 @@ class ProjectResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'sector_id' => $this->sector_id,
-            'name' => $this->name,
-            'launch_date' => $this->launch_date?->toDateString(),
-            'horizon_months' => $this->horizon_months,
-            'country' => $this->country,
-            'currency' => $this->currency,
-            'activity_mode' => $this->activity_mode,
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'id' => $this->id_projet,
+            'sector_id' => $this->id_secteur,
+            'name' => $this->nom,
+            'launch_date' => $this->date_lancement?->toDateString(),
+            'horizon_months' => $this->horizon_mois,
+            'country' => $this->pays,
+            'currency' => $this->devise,
+            'activity_mode' => match ($this->mode_activite) {
+                'GLOBAL' => 'global',
+                'DETAILLE' => 'detailed',
+                default => $this->mode_activite,
+            },
+            'created_at' => $this->date_creation,
+            'updated_at' => $this->date_modification,
         ];
     }
 }

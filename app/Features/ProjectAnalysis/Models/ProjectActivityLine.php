@@ -7,36 +7,41 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProjectActivityLine extends Model
 {
+    protected $table = 'ligne_activite_projet';
+    protected $primaryKey = 'id_ligne_activite';
+
+    public $timestamps = false;
+
     protected $fillable = [
-        'project_id',
-        'line_type',
+        'id_projet',
+        'type_ligne',
         'designation',
-        'monthly_revenue',
-        'monthly_cost_of_goods_sold',
-        'unit_price',
-        'monthly_volume',
-        'unit_direct_cost',
-        'monthly_subscription_price',
-        'new_subscribers_per_month',
-        'active_subscribers',
+        'ca_mensuel_saisi',
+        'cogs_mensuel_saisi',
+        'prix_unitaire',
+        'volume_mensuel',
+        'cout_direct_unitaire',
+        'prix_abonnement_mensuel',
+        'nouveaux_abonnes_mois',
+        'abonnes_actifs',
     ];
 
     protected function casts(): array
     {
         return [
-            'monthly_revenue' => 'decimal:2',
-            'monthly_cost_of_goods_sold' => 'decimal:2',
-            'unit_price' => 'decimal:2',
-            'monthly_volume' => 'decimal:2',
-            'unit_direct_cost' => 'decimal:2',
-            'monthly_subscription_price' => 'decimal:2',
-            'new_subscribers_per_month' => 'integer',
-            'active_subscribers' => 'integer',
+            'ca_mensuel_saisi' => 'decimal:2',
+            'cogs_mensuel_saisi' => 'decimal:2',
+            'prix_unitaire' => 'decimal:2',
+            'volume_mensuel' => 'decimal:2',
+            'cout_direct_unitaire' => 'decimal:2',
+            'prix_abonnement_mensuel' => 'decimal:2',
+            'nouveaux_abonnes_mois' => 'integer',
+            'abonnes_actifs' => 'integer',
         ];
     }
 
     public function project(): BelongsTo
     {
-        return $this->belongsTo(Project::class);
+        return $this->belongsTo(Project::class, 'id_projet', 'id_projet');
     }
 }
