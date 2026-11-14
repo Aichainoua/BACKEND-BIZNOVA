@@ -20,6 +20,31 @@ composer run dev
 The API listens on `http://127.0.0.1:8000`. Health check: `GET /api/v1/health`.
 Run automated tests with `composer test`.
 
+## Company dashboard
+
+Authenticated company owners can retrieve annual financial aggregates with:
+
+```text
+GET /api/v1/companies/{company}/dashboard?year=2026
+```
+
+The `year` parameter is optional (defaults to the current year). The response contains income, expenses and net totals, twelve monthly trends, category and tag breakdowns, and monthly budget comparisons. All records are scoped to the requested company.
+
+## Docker deployment
+
+The Docker Compose setup runs the API with PHP-FPM, Nginx and PostgreSQL. Create the root `.env` file, set a production `APP_KEY` and a strong `DB_PASSWORD`, then start the services and apply migrations explicitly:
+
+```bash
+cp .env.example .env
+php artisan key:generate
+# Set APP_ENV=production, APP_DEBUG=false, APP_URL=http://localhost:8080,
+# DB_USERNAME=biznova, and a strong DB_PASSWORD in .env.
+docker compose up -d --build
+docker compose exec app php artisan migrate --force
+```
+
+The API is available at `http://localhost:8080` by default; set `APP_PORT` to change the host port. PostgreSQL data is persisted in the `postgres_data` volume. Configure TLS, backups and production secrets management before exposing the service publicly. Migrations are not run automatically during container startup.
+
 ## Features
 
 ```text

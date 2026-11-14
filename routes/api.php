@@ -1,6 +1,7 @@
 <?php
 
 use App\Features\BusinessFinance\Http\Controllers\CompanyController;
+use App\Features\BusinessFinance\Http\Controllers\CompanyDashboardController;
 use App\Features\BusinessFinance\Http\Controllers\FinancialOperationController;
 use App\Features\BusinessFinance\Http\Controllers\MonthlyBudgetController;
 use App\Features\BusinessFinance\Http\Controllers\TagController;
@@ -32,6 +33,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/categories', [ReferenceDataController::class, 'categories'])->name('categories.index');
         Route::apiResource('projects', ProjectController::class);
         Route::apiResource('companies', CompanyController::class);
+        Route::get('/companies/{company}/dashboard', CompanyDashboardController::class)
+            ->name('companies.dashboard');
         Route::apiResource('companies.operations', FinancialOperationController::class);
         Route::apiResource('companies.tags', TagController::class);
         Route::apiResource('companies.budgets', MonthlyBudgetController::class)
