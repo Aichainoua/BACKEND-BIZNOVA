@@ -13,6 +13,9 @@ tags:
   - name: Identity
   - name: Reference data
   - name: Projects
+  - name: Project hypotheses
+  - name: Project analysis
+  - name: Project reports
   - name: Companies
   - name: Operations
   - name: Tags
@@ -306,6 +309,152 @@ paths:
       responses:
         '204':
           description: Projet supprimé
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{project}/hypotheses:
+    parameters:
+      - name: project
+        in: path
+        required: true
+        description: Identifiant du projet
+        schema:
+          type: integer
+    get:
+      tags: [Project hypotheses]
+      operationId: getProjectHypotheses
+      summary: Consulter les hypothèses d'un projet
+      responses:
+        '200':
+          description: Hypothèses de financement, d'activité et de charges
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectHypothesesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Project hypotheses]
+      operationId: saveProjectHypotheses
+      summary: Remplacer les hypothèses d'un projet
+      description: >-
+        Enregistre atomiquement le financement, les lignes d'activité et les
+        charges. Les charges ne peuvent pas dépasser l'horizon du projet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveProjectHypothesesRequest'
+      responses:
+        '200':
+          description: Hypothèses enregistrées
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectHypothesesSavedResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /projects/{project}/analysis:
+    get:
+      tags: [Project analysis]
+      operationId: getProjectAnalysis
+      summary: Calculer les prévisions financières d'un projet
+      parameters:
+        - name: project
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Synthèse et prévisions mensuelles calculées
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectAnalysisResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{project}/reports:
+    parameters:
+      - name: project
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [Project reports]
+      operationId: listProjectReports
+      summary: Lister les rapports d'un projet
+      responses:
+        '200':
+          description: Rapports disponibles du projet
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Project reports]
+      operationId: createProjectReport
+      summary: Générer un rapport PDF de prévision
+      responses:
+        '201':
+          description: Rapport généré et enregistré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectReportCreatedResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{project}/reports/{report}/download:
+    get:
+      tags: [Project reports]
+      operationId: downloadProjectReport
+      summary: Télécharger un rapport PDF
+      parameters:
+        - name: project
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: report
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Fichier PDF du rapport
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1256,6 +1405,289 @@ components:
           $ref: '#/components/schemas/PaginationLinks'
         meta:
           $ref: '#/components/schemas/PaginationMeta'
+    FundingHypotheses:
+      type: object
+      required: [initial_investment_total]
+      properties:
+        initial_investment_total:
+          type: number
+          minimum: 0
+        personal_contribution:
+          type: number
+          minimum: 0
+        non_loan_funding:
+          type: number
+          minimum: 0
+        loan_amount:
+          type: [number, 'null']
+          minimum: 0
+        annual_interest_rate:
+          type: [number, 'null']
+          minimum: 0
+        loan_duration_months:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 600
+        repayment_frequency:
+          type: [string, 'null']
+          maxLength: 30
+        deferment_months:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 600
+    ActivityLineInput:
+      type: object
+      required: [type, designation]
+      properties:
+        type:
+          type: string
+          enum: [COMMERCE_GLOBAL, FAMILLE, PRESTATION, ABONNEMENT, commerce_global, family, famille, service, prestation, subscription, abonnement]
+          description: Les alias en minuscules sont normalisés vers les valeurs majuscules.
+        designation:
+          type: string
+          maxLength: 150
+        monthly_revenue:
+          type: [number, 'null']
+          minimum: 0
+        monthly_cost_of_goods_sold:
+          type: [number, 'null']
+          minimum: 0
+        unit_price:
+          type: [number, 'null']
+          minimum: 0
+        monthly_volume:
+          type: [number, 'null']
+          minimum: 0
+        unit_direct_cost:
+          type: [number, 'null']
+          minimum: 0
+        monthly_subscription_price:
+          type: [number, 'null']
+          minimum: 0
+        new_subscribers_per_month:
+          type: [integer, 'null']
+          minimum: 0
+        active_subscribers:
+          type: [integer, 'null']
+          minimum: 0
+    ExpenseInput:
+      type: object
+      required: [nature, label, monthly_amount, start_month]
+      properties:
+        nature:
+          type: string
+          enum: [FIXE, VARIABLE, fixe, variable]
+        label:
+          type: string
+          maxLength: 150
+        monthly_amount:
+          type: number
+          minimum: 0
+        start_month:
+          type: integer
+          minimum: 1
+          maximum: 60
+        end_month:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 60
+          description: Ne peut dépasser l'horizon du projet ni être antérieur au mois de début.
+    SaveProjectHypothesesRequest:
+      type: object
+      required: [funding, activity_lines, expenses]
+      properties:
+        funding:
+          $ref: '#/components/schemas/FundingHypotheses'
+        activity_lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ActivityLineInput'
+        expenses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpenseInput'
+    FundingHypothesesResponse:
+      type: object
+      required: [initial_investment_total, personal_contribution, non_loan_funding, loan_amount, annual_interest_rate, loan_duration_months, repayment_frequency, deferment_months]
+      properties:
+        initial_investment_total:
+          type: string
+        personal_contribution:
+          type: string
+        non_loan_funding:
+          type: string
+        loan_amount:
+          type: [string, 'null']
+        annual_interest_rate:
+          type: string
+        loan_duration_months:
+          type: [integer, 'null']
+        repayment_frequency:
+          type: [string, 'null']
+        deferment_months:
+          type: integer
+    ActivityLine:
+      allOf:
+        - $ref: '#/components/schemas/ActivityLineInput'
+        - type: object
+          required: [id, monthly_revenue, monthly_cost_of_goods_sold, unit_price, monthly_volume, unit_direct_cost, monthly_subscription_price, new_subscribers_per_month, active_subscribers]
+          properties:
+            id:
+              type: integer
+            type:
+              type: string
+              enum: [COMMERCE_GLOBAL, FAMILLE, PRESTATION, ABONNEMENT]
+    ProjectExpense:
+      allOf:
+        - $ref: '#/components/schemas/ExpenseInput'
+        - type: object
+          required: [id, end_month]
+          properties:
+            id:
+              type: integer
+    ProjectHypotheses:
+      type: object
+      required: [funding, activity_lines, expenses]
+      properties:
+        funding:
+          oneOf:
+            - $ref: '#/components/schemas/FundingHypothesesResponse'
+            - type: 'null'
+        activity_lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityLine'
+        expenses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectExpense'
+    ProjectHypothesesResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ProjectHypotheses'
+    ProjectHypothesesSavedResponse:
+      type: object
+      required: [message, data]
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/ProjectHypotheses'
+    ProjectAnalysis:
+      type: object
+      required: [project, summary, monthly_forecast, warnings, calculation_assumptions]
+      properties:
+        project:
+          type: object
+          required: [id, name, currency, horizon_months, launch_date]
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            currency:
+              type: string
+            horizon_months:
+              type: integer
+            launch_date:
+              type: [string, 'null']
+              format: date
+        summary:
+          type: object
+          required: [initial_investment, total_revenue, total_cost_of_goods_sold, total_fixed_expenses, total_variable_expenses, total_expenses, total_operating_result, operating_margin_percentage, roi_percentage, break_even_monthly_revenue, payback_month, final_cumulative_cash_flow]
+          properties:
+            initial_investment:
+              type: number
+            total_revenue:
+              type: number
+            total_cost_of_goods_sold:
+              type: number
+            total_fixed_expenses:
+              type: number
+            total_variable_expenses:
+              type: number
+            total_expenses:
+              type: number
+            total_operating_result:
+              type: number
+            operating_margin_percentage:
+              type: [number, 'null']
+            roi_percentage:
+              type: [number, 'null']
+            break_even_monthly_revenue:
+              type: [number, 'null']
+            payback_month:
+              type: [integer, 'null']
+            final_cumulative_cash_flow:
+              type: number
+        monthly_forecast:
+          type: array
+          items:
+            type: object
+            required: [month, revenue, cost_of_goods_sold, fixed_expenses, variable_expenses, total_expenses, operating_result, operating_margin_percentage, cumulative_cash_flow]
+            properties:
+              month:
+                type: integer
+              revenue:
+                type: number
+              cost_of_goods_sold:
+                type: number
+              fixed_expenses:
+                type: number
+              variable_expenses:
+                type: number
+              total_expenses:
+                type: number
+              operating_result:
+                type: number
+              operating_margin_percentage:
+                type: [number, 'null']
+              cumulative_cash_flow:
+                type: number
+        warnings:
+          type: array
+          items:
+            type: string
+        calculation_assumptions:
+          type: object
+          additionalProperties:
+            type: boolean
+    ProjectAnalysisResponse:
+      type: object
+      required: [message, data]
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/ProjectAnalysis'
+    ProjectReport:
+      type: object
+      required: [id, file_name, generated_at, period_start, period_end]
+      properties:
+        id:
+          type: integer
+        file_name:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+        period_start:
+          type: [string, 'null']
+          format: date
+        period_end:
+          type: [string, 'null']
+          format: date
+    ProjectReportCreatedResponse:
+      type: object
+      required: [message, data]
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/ProjectReport'
     Operation:
       type: object
       required: [id, company_id, category_id, amount, operation_date, description, created_at, updated_at]

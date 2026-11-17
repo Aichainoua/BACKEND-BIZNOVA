@@ -14,10 +14,10 @@ class FinancialCalculationService
             'expenses',
         ]);
 
-        $horizon = (int) $project->horizon_mois;
+        $horizon = (int) $project->horizon_months;
         $funding = $project->funding;
 
-        $initialInvestment = (float) ($funding?->investissement_initial_total ?? 0);
+        $initialInvestment = (float) ($funding?->initial_investment_total ?? 0);
 
         $monthlyForecast = [];
 
@@ -37,50 +37,50 @@ class FinancialCalculationService
             $variableExpenses = 0;
 
             foreach ($project->activityLines as $line) {
-                $type = $line->type_ligne;
+                $type = $line->line_type;
 
                 if ($type === 'COMMERCE_GLOBAL') {
-                    $revenue += (float) $line->ca_mensuel_saisi;
-                    $cogs += (float) $line->cogs_mensuel_saisi;
+                    $revenue += (float) $line->monthly_revenue;
+                    $cogs += (float) $line->monthly_cost_of_goods_sold;
                 }
 
                 if (in_array($type, ['FAMILLE', 'PRESTATION'], true)) {
-                    $quantity = (float) $line->volume_mensuel;
-                    $unitPrice = (float) $line->prix_unitaire;
-                    $unitCost = (float) $line->cout_direct_unitaire;
+                    $quantity = (float) $line->monthly_volume;
+                    $unitPrice = (float) $line->unit_price;
+                    $unitCost = (float) $line->unit_direct_cost;
 
                     $revenue += $unitPrice * $quantity;
                     $cogs += $unitCost * $quantity;
                 }
 
                 if ($type === 'ABONNEMENT') {
-                    $baseSubscribers = (float) $line->abonnes_actifs;
-                    $newSubscribers = (float) $line->nouveaux_abonnes_mois;
+                    $baseSubscribers = (float) $line->active_subscribers;
+                    $newSubscribers = (float) $line->new_subscribers_per_month;
 
                     $activeSubscribers = $baseSubscribers
                         + ($newSubscribers * ($month - 1));
 
-                    $revenue += (float) $line->prix_abonnement_mensuel
+                    $revenue += (float) $line->monthly_subscription_price
                         * $activeSubscribers;
 
-                    $cogs += (float) $line->cout_direct_unitaire
+                    $cogs += (float) $line->unit_direct_cost
                         * $activeSubscribers;
                 }
             }
 
             foreach ($project->expenses as $expense) {
-                $startMonth = (int) ($expense->date_debut_mois ?? 1);
-                $endMonth = (int) ($expense->date_fin_mois ?? $horizon);
+                $startMonth = (int) ($expense->start_month ?? 1);
+                $endMonth = (int) ($expense->end_month ?? $horizon);
 
                 if ($month < $startMonth || $month > $endMonth) {
                     continue;
                 }
 
-                $amount = (float) $expense->montant_mensuel;
+                $amount = (float) $expense->monthly_amount;
 
-                if ($expense->nature_charge === 'FIXE') {
+                if ($expense->nature === 'FIXE') {
                     $fixedExpenses += $amount;
-                } elseif ($expense->nature_charge === 'VARIABLE') {
+                } elseif ($expense->nature === 'VARIABLE') {
                     $variableExpenses += $amount;
                 }
             }
@@ -131,10 +131,6 @@ class FinancialCalculationService
             ? (($totalOperatingResult - $initialInvestment) / $initialInvestment) * 100
             : null;
 
-        $averageMonthlyRevenue = $horizon > 0
-            ? $totalRevenue / $horizon
-            : 0;
-
         $averageMonthlyFixedExpenses = $horizon > 0
             ? $totalFixedExpenses / $horizon
             : 0;
@@ -167,11 +163,11 @@ class FinancialCalculationService
 
         return [
             'project' => [
-                'id' => $project->id_projet,
-                'name' => $project->nom,
-                'currency' => trim($project->devise),
+                'id' => $project->id,
+                'name' => $project->name,
+                'currency' => trim($project->currency),
                 'horizon_months' => $horizon,
-                'launch_date' => $project->date_lancement?->format('Y-m-d'),
+                'launch_date' => $project->launch_date?->format('Y-m-d'),
             ],
 
             'summary' => [

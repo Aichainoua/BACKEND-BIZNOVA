@@ -20,7 +20,7 @@ class ProjectController extends Controller
 
         return ProjectResource::collection(
             $user->projects()
-                ->latest('date_creation')
+                ->latest('created_at')
                 ->paginate(15)
         );
     }
@@ -31,13 +31,13 @@ class ProjectController extends Controller
         $data = $request->validated();
 
         $project = $user->projects()->create([
-            'id_secteur' => $data['sector_id'],
-            'nom' => $data['name'],
-            'date_lancement' => $data['launch_date'],
-            'horizon_mois' => $data['horizon_months'] ?? 12,
-            'pays' => $data['country'] ?? null,
-            'devise' => $data['currency'] ?? 'XAF',
-            'mode_activite' => $data['activity_mode'],
+            'sector_id' => $data['sector_id'],
+            'name' => $data['name'],
+            'launch_date' => $data['launch_date'],
+            'horizon_months' => $data['horizon_months'] ?? 12,
+            'country' => $data['country'] ?? null,
+            'currency' => $data['currency'] ?? 'XAF',
+            'activity_mode' => $data['activity_mode'],
         ]);
 
         return (new ProjectResource($project))
@@ -49,7 +49,7 @@ class ProjectController extends Controller
     {
         $project = Auth::user()
             ->projects()
-            ->findOrFail($project->id_projet);
+            ->findOrFail($project->id);
 
         return new ProjectResource($project);
     }
@@ -60,29 +60,11 @@ class ProjectController extends Controller
     ): ProjectResource {
         $project = Auth::user()
             ->projects()
-            ->findOrFail($project->id_projet);
+            ->findOrFail($project->id);
 
         $data = $request->validated();
 
-        $mapping = [
-            'sector_id' => 'id_secteur',
-            'name' => 'nom',
-            'launch_date' => 'date_lancement',
-            'horizon_months' => 'horizon_mois',
-            'country' => 'pays',
-            'currency' => 'devise',
-            'activity_mode' => 'mode_activite',
-        ];
-
-        $updates = [];
-
-        foreach ($mapping as $apiField => $databaseField) {
-            if (array_key_exists($apiField, $data)) {
-                $updates[$databaseField] = $data[$apiField];
-            }
-        }
-
-        $project->update($updates);
+        $project->update($data);
 
         return new ProjectResource($project->refresh());
     }
@@ -91,7 +73,7 @@ class ProjectController extends Controller
     {
         Auth::user()
             ->projects()
-            ->findOrFail($project->id_projet)
+            ->findOrFail($project->id)
             ->delete();
 
         return response()->noContent();

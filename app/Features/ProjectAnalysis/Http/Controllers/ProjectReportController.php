@@ -5,6 +5,7 @@ namespace App\Features\ProjectAnalysis\Http\Controllers;
 use App\Features\ProjectAnalysis\Models\Project;
 use App\Features\ProjectAnalysis\Services\ProjectReportService;
 use App\Http\Controllers\Controller;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -16,17 +17,17 @@ class ProjectReportController extends Controller
     {
         $project = Auth::user()
             ->projects()
-            ->findOrFail($project->id_projet);
+            ->findOrFail($project->id);
 
         $reports = $project->reports()
-            ->orderByDesc('date_generation')
+            ->orderByDesc('generated_at')
             ->get()
             ->map(fn ($report) => [
-                'id' => $report->id_rapport_projet,
-                'file_name' => $report->nom_fichier,
-                'generated_at' => $report->date_generation,
-                'period_start' => $report->periode_debut,
-                'period_end' => $report->periode_fin,
+                'id' => $report->id,
+                'file_name' => $report->file_name,
+                'generated_at' => $report->generated_at,
+                'period_start' => $report->period_start?->toDateString(),
+                'period_end' => $report->period_end?->toDateString(),
             ]);
 
         return response()->json([
@@ -40,18 +41,18 @@ class ProjectReportController extends Controller
     ): JsonResponse {
         $project = Auth::user()
             ->projects()
-            ->findOrFail($project->id_projet);
+            ->findOrFail($project->id);
 
         $report = $reportService->generate($project);
 
         return response()->json([
             'message' => 'Rapport prévisionnel généré avec succès.',
             'data' => [
-                'id' => $report->id_rapport_projet,
-                'file_name' => $report->nom_fichier,
-                'generated_at' => $report->date_generation,
-                'period_start' => $report->periode_debut,
-                'period_end' => $report->periode_fin,
+                'id' => $report->id,
+                'file_name' => $report->file_name,
+                'generated_at' => $report->generated_at,
+                'period_start' => $report->period_start?->toDateString(),
+                'period_end' => $report->period_end?->toDateString(),
             ],
         ], 201);
     }
@@ -62,20 +63,19 @@ class ProjectReportController extends Controller
     ): StreamedResponse {
         $project = Auth::user()
             ->projects()
-            ->findOrFail($project->id_projet);
+            ->findOrFail($project->id);
 
         $report = $project->reports()
             ->findOrFail($report);
 
-        abort_unless(
-            Storage::disk('local')->exists($report->chemin_fichier),
-            404,
-            'Le fichier PDF est introuvable.'
-        );
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk('local');
 
-        return Storage::disk('local')->download(
-            $report->chemin_fichier,
-            $report->nom_fichier,
+        abort_unless($disk->exists($report->file_path), 404, 'Le fichier PDF est introuvable.');
+
+        return $disk->download(
+            $report->file_path,
+            $report->file_name,
             ['Content-Type' => 'application/pdf']
         );
     }

@@ -17,7 +17,7 @@ class ProjectHypothesesController extends Controller
         $project = Auth::user()
             ->projects()
             ->with(['funding', 'activityLines', 'expenses'])
-            ->findOrFail($project->id_projet);
+            ->findOrFail($project->id);
 
         return response()->json([
             'data' => $this->formatHypotheses($project),
@@ -30,14 +30,14 @@ class ProjectHypothesesController extends Controller
     ): JsonResponse {
         $project = Auth::user()
             ->projects()
-            ->findOrFail($project->id_projet);
+            ->findOrFail($project->id);
 
         $data = $request->validated();
 
         foreach ($data['expenses'] as $expense) {
             if (
                 isset($expense['end_month'])
-                && $expense['end_month'] > $project->horizon_mois
+                && $expense['end_month'] > $project->horizon_months
             ) {
                 throw ValidationException::withMessages([
                     'expenses' => [
@@ -51,45 +51,37 @@ class ProjectHypothesesController extends Controller
             $funding = $data['funding'];
 
             $project->funding()->updateOrCreate([], [
-                'investissement_initial_total' =>
-                    $funding['initial_investment_total'],
+                'initial_investment_total' => $funding['initial_investment_total'],
 
-                'apport_personnel' =>
-                    $funding['personal_contribution'] ?? 0,
+                'personal_contribution' => $funding['personal_contribution'] ?? 0,
 
-                'financement_hors_emprunt' =>
-                    $funding['non_loan_funding'] ?? 0,
+                'non_loan_funding' => $funding['non_loan_funding'] ?? 0,
 
-                'montant_emprunt' =>
-                    $funding['loan_amount'] ?? null,
+                'loan_amount' => $funding['loan_amount'] ?? null,
 
-                'taux_interet_annuel' =>
-                    $funding['annual_interest_rate'] ?? 0,
+                'annual_interest_rate' => $funding['annual_interest_rate'] ?? 0,
 
-                'duree_emprunt_mois' =>
-                    $funding['loan_duration_months'] ?? null,
+                'loan_duration_months' => $funding['loan_duration_months'] ?? null,
 
-                'frequence_remboursement' =>
-                    $funding['repayment_frequency'] ?? null,
+                'repayment_frequency' => $funding['repayment_frequency'] ?? null,
 
-                'differe_mois' =>
-                    $funding['deferment_months'] ?? 0,
+                'deferment_months' => $funding['deferment_months'] ?? 0,
             ]);
 
             $project->activityLines()->delete();
 
             $activityLines = array_map(
                 fn (array $line): array => [
-                    'type_ligne' => $line['type'],
+                    'line_type' => $line['type'],
                     'designation' => $line['designation'],
-                    'ca_mensuel_saisi' => $line['monthly_revenue'] ?? null,
-                    'cogs_mensuel_saisi' => $line['monthly_cost_of_goods_sold'] ?? null,
-                    'prix_unitaire' => $line['unit_price'] ?? null,
-                    'volume_mensuel' => $line['monthly_volume'] ?? null,
-                    'cout_direct_unitaire' => $line['unit_direct_cost'] ?? null,
-                    'prix_abonnement_mensuel' => $line['monthly_subscription_price'] ?? null,
-                    'nouveaux_abonnes_mois' => $line['new_subscribers_per_month'] ?? null,
-                    'abonnes_actifs' => $line['active_subscribers'] ?? null,
+                    'monthly_revenue' => $line['monthly_revenue'] ?? null,
+                    'monthly_cost_of_goods_sold' => $line['monthly_cost_of_goods_sold'] ?? null,
+                    'unit_price' => $line['unit_price'] ?? null,
+                    'monthly_volume' => $line['monthly_volume'] ?? null,
+                    'unit_direct_cost' => $line['unit_direct_cost'] ?? null,
+                    'monthly_subscription_price' => $line['monthly_subscription_price'] ?? null,
+                    'new_subscribers_per_month' => $line['new_subscribers_per_month'] ?? null,
+                    'active_subscribers' => $line['active_subscribers'] ?? null,
                 ],
                 $data['activity_lines']
             );
@@ -100,16 +92,16 @@ class ProjectHypothesesController extends Controller
 
             $expenses = array_map(
                 fn (array $expense): array => [
-                    'nature_charge' => $expense['nature'],
-                    'libelle' => $expense['label'],
-                    'montant_mensuel' => $expense['monthly_amount'],
-                    'date_debut_mois' => $expense['start_month'],
-                    'date_fin_mois' => $expense['end_month'] ?? null,
+                    'nature' => $expense['nature'],
+                    'label' => $expense['label'],
+                    'monthly_amount' => $expense['monthly_amount'],
+                    'start_month' => $expense['start_month'],
+                    'end_month' => $expense['end_month'] ?? null,
                 ],
                 $data['expenses']
             );
 
-            if (!empty($expenses)) {
+            if (! empty($expenses)) {
                 $project->expenses()->createMany($expenses);
             }
         });
@@ -128,37 +120,37 @@ class ProjectHypothesesController extends Controller
 
         return [
             'funding' => $funding ? [
-                'initial_investment_total' => $funding->investissement_initial_total,
-                'personal_contribution' => $funding->apport_personnel,
-                'non_loan_funding' => $funding->financement_hors_emprunt,
-                'loan_amount' => $funding->montant_emprunt,
-                'annual_interest_rate' => $funding->taux_interet_annuel,
-                'loan_duration_months' => $funding->duree_emprunt_mois,
-                'repayment_frequency' => $funding->frequence_remboursement,
-                'deferment_months' => $funding->differe_mois,
+                'initial_investment_total' => $funding->initial_investment_total,
+                'personal_contribution' => $funding->personal_contribution,
+                'non_loan_funding' => $funding->non_loan_funding,
+                'loan_amount' => $funding->loan_amount,
+                'annual_interest_rate' => $funding->annual_interest_rate,
+                'loan_duration_months' => $funding->loan_duration_months,
+                'repayment_frequency' => $funding->repayment_frequency,
+                'deferment_months' => $funding->deferment_months,
             ] : null,
 
             'activity_lines' => $project->activityLines->map(fn ($line) => [
-                'id' => $line->id_ligne_activite,
-                'type' => $line->type_ligne,
+                'id' => $line->id,
+                'type' => $line->line_type,
                 'designation' => $line->designation,
-                'monthly_revenue' => $line->ca_mensuel_saisi,
-                'monthly_cost_of_goods_sold' => $line->cogs_mensuel_saisi,
-                'unit_price' => $line->prix_unitaire,
-                'monthly_volume' => $line->volume_mensuel,
-                'unit_direct_cost' => $line->cout_direct_unitaire,
-                'monthly_subscription_price' => $line->prix_abonnement_mensuel,
-                'new_subscribers_per_month' => $line->nouveaux_abonnes_mois,
-                'active_subscribers' => $line->abonnes_actifs,
+                'monthly_revenue' => $line->monthly_revenue,
+                'monthly_cost_of_goods_sold' => $line->monthly_cost_of_goods_sold,
+                'unit_price' => $line->unit_price,
+                'monthly_volume' => $line->monthly_volume,
+                'unit_direct_cost' => $line->unit_direct_cost,
+                'monthly_subscription_price' => $line->monthly_subscription_price,
+                'new_subscribers_per_month' => $line->new_subscribers_per_month,
+                'active_subscribers' => $line->active_subscribers,
             ])->values(),
 
             'expenses' => $project->expenses->map(fn ($expense) => [
-                'id' => $expense->id_poste_charge,
-                'nature' => $expense->nature_charge,
-                'label' => $expense->libelle,
-                'monthly_amount' => $expense->montant_mensuel,
-                'start_month' => $expense->date_debut_mois,
-                'end_month' => $expense->date_fin_mois,
+                'id' => $expense->id,
+                'nature' => $expense->nature,
+                'label' => $expense->label,
+                'monthly_amount' => $expense->monthly_amount,
+                'start_month' => $expense->start_month,
+                'end_month' => $expense->end_month,
             ])->values(),
         ];
     }

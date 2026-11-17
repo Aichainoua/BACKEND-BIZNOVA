@@ -3,6 +3,7 @@
 namespace App\Features\ProjectAnalysis\Services;
 
 use App\Features\ProjectAnalysis\Models\Project;
+use App\Features\ProjectAnalysis\Models\ProjectReport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -15,7 +16,7 @@ class ProjectReportService
         private FinancialCalculationService $calculationService
     ) {}
 
-    public function generate(Project $project)
+    public function generate(Project $project): ProjectReport
     {
         $project->loadMissing([
             'funding',
@@ -24,26 +25,20 @@ class ProjectReportService
         ]);
 
         $analysis = $this->calculationService->calculate($project);
-
-        $launchDate = $project->date_lancement->copy()->startOfMonth();
+        $launchDate = $project->launch_date->copy()->startOfMonth();
         $periodStart = $launchDate->toDateString();
-
         $periodEnd = $launchDate
             ->copy()
-            ->addMonths((int) $project->horizon_mois)
+            ->addMonths((int) $project->horizon_months)
             ->subDay()
             ->toDateString();
 
-        $filename = 'rapport-projet-'
-            . $project->id_projet
-            . '-'
-            . Str::uuid()
-            . '.pdf';
-
-        $filePath = 'project-reports/'
-            . $project->id_projet
-            . '/'
-            . $filename;
+        $filename = 'project-report-'
+            .$project->id
+            .'-'
+            .Str::uuid()
+            .'.pdf';
+        $filePath = 'project-reports/'.$project->id.'/'.$filename;
 
         $pdf = Pdf::loadView('project-analysis.report', [
             'project' => $project,
@@ -53,24 +48,21 @@ class ProjectReportService
             'periodEnd' => $periodEnd,
         ])->setPaper('a4', 'portrait');
 
-        $saved = Storage::disk('local')->put(
-            $filePath,
-            $pdf->output()
-        );
+        $saved = Storage::disk('local')->put($filePath, $pdf->output());
 
-        if (!$saved) {
+        if (! $saved) {
             throw new RuntimeException('Impossible d’enregistrer le rapport PDF.');
         }
 
         try {
             return $project->reports()->create([
-                'date_generation' => now(),
-                'periode_debut' => $periodStart,
-                'periode_fin' => $periodEnd,
-                'devise' => $project->devise,
-                'nom_fichier' => $filename,
-                'chemin_fichier' => $filePath,
-                'instantane_hypotheses' => $analysis,
+                'generated_at' => now(),
+                'period_start' => $periodStart,
+                'period_end' => $periodEnd,
+                'currency' => $project->currency,
+                'file_name' => $filename,
+                'file_path' => $filePath,
+                'data_snapshot' => $analysis,
             ]);
         } catch (Throwable $exception) {
             Storage::disk('local')->delete($filePath);

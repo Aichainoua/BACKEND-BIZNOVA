@@ -7,48 +7,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProjectReport extends Model
 {
-    protected $table = 'rapport_projet';
-
-    protected $primaryKey = 'id_rapport_projet';
-
-    public $timestamps = false;
-
     protected $fillable = [
-        'id_projet',
-        'date_generation',
-        'periode_debut',
-        'periode_fin',
-        'devise',
-        'nom_fichier',
-        'chemin_fichier',
-        'instantane_hypotheses',
+        'project_id',
+        'generated_at',
+        'period_start',
+        'period_end',
+        'currency',
+        'file_name',
+        'file_path',
+        'data_snapshot',
     ];
 
     protected function casts(): array
     {
         return [
-            'date_generation' => 'datetime',
-            'periode_debut' => 'date',
-            'periode_fin' => 'date',
-            'instantane_hypotheses' => 'array',
+            'generated_at' => 'datetime',
+            'period_start' => 'date',
+            'period_end' => 'date',
+            'data_snapshot' => 'array',
         ];
     }
 
     public function project(): BelongsTo
     {
-        return $this->belongsTo(
-            Project::class,
-            'id_projet',
-            'id_projet'
-        );
+        return $this->belongsTo(Project::class);
     }
-
-    public function reports(): HasMany
-{
-    return $this->hasMany(
-        ProjectReport::class,
-        'id_projet',
-        'id_projet'
-    );
-}
 }

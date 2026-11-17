@@ -30,7 +30,7 @@ class UpdateProjectRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'sector_id' => ['sometimes', 'required', 'integer', 'exists:secteur,id_secteur'],
+            'sector_id' => ['sometimes', 'required', 'integer', 'exists:sectors,id'],
             'name' => ['sometimes', 'required', 'string', 'max:150'],
             'launch_date' => ['sometimes', 'required', 'date'],
             'horizon_months' => ['sometimes', 'integer', 'between:6,60'],

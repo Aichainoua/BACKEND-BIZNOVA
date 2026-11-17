@@ -11,77 +11,57 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Project extends Model
 {
-    protected $table = 'projet';
-
-    protected $primaryKey = 'id_projet';
-
-    public const CREATED_AT = 'date_creation';
-    public const UPDATED_AT = 'date_modification';
-
     protected $attributes = [
-        'horizon_mois' => 12,
-        'devise' => 'XAF',
+        'horizon_months' => 12,
+        'currency' => 'XAF',
     ];
 
     protected $fillable = [
-        'id_utilisateur',
-        'id_secteur',
-        'nom',
-        'date_lancement',
-        'horizon_mois',
-        'pays',
-        'devise',
-        'mode_activite',
+        'user_id',
+        'sector_id',
+        'name',
+        'launch_date',
+        'horizon_months',
+        'country',
+        'currency',
+        'activity_mode',
     ];
 
     protected function casts(): array
     {
         return [
-            'date_lancement' => 'date',
-            'horizon_mois' => 'integer',
+            'launch_date' => 'date',
+            'horizon_months' => 'integer',
         ];
     }
 
-    
-public function user(): BelongsTo
-{
-    return $this->belongsTo(
-        User::class,
-        'id_utilisateur',
-        'id_utilisateur'
-    );
-}
-
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function sector(): BelongsTo
     {
-        return $this->belongsTo(Sector::class, 'id_secteur', 'id_secteur');
+        return $this->belongsTo(Sector::class);
     }
 
     public function funding(): HasOne
     {
-        return $this->hasOne(ProjectFunding::class, 'id_projet', 'id_projet');
+        return $this->hasOne(ProjectFunding::class);
     }
 
     public function activityLines(): HasMany
     {
-        return $this->hasMany(ProjectActivityLine::class, 'id_projet', 'id_projet');
+        return $this->hasMany(ProjectActivityLine::class);
     }
 
     public function expenses(): HasMany
     {
-        return $this->hasMany(ProjectExpense::class, 'id_projet', 'id_projet');
+        return $this->hasMany(ProjectExpense::class);
     }
 
     public function reports(): HasMany
     {
-        return $this->hasMany(ProjectReport::class, 'id_projet', 'id_projet');
+        return $this->hasMany(ProjectReport::class);
     }
-
-
-public function getRouteKeyName(): string
-{
-    return 'id_projet';
-}
-
 }

@@ -30,7 +30,7 @@ class StoreProjectRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'sector_id' => ['required', 'integer', 'exists:secteur,id_secteur'],
+            'sector_id' => ['required', 'integer', 'exists:sectors,id'],
             'name' => ['required', 'string', 'max:150'],
             'launch_date' => ['required', 'date'],
             'horizon_months' => ['sometimes', 'integer', 'between:6,60'],

@@ -14,12 +14,12 @@ class ReferenceDataController extends Controller
     public function sectors(): JsonResponse
     {
         $sectors = Sector::query()
-            ->orderBy('libelle')
-            ->get(['id_secteur', 'code', 'libelle'])
-            ->map(fn (Sector $sector) => [
-                'id' => $sector->id_secteur,
+            ->orderBy('label')
+            ->get(['id', 'code', 'label'])
+            ->map(fn ($sector) => [
+                'id' => $sector->id,
                 'code' => strtolower($sector->code),
-                'label' => $sector->libelle,
+                'label' => $sector->label,
             ]);
 
         return response()->json(['data' => $sectors]);
@@ -28,39 +28,34 @@ class ReferenceDataController extends Controller
     public function categories(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'sector_id' => ['sometimes', 'integer', 'exists:secteur,id_secteur'],
+            'sector_id' => ['sometimes', 'integer', 'exists:sectors,id'],
             'type' => ['sometimes', 'string', 'in:income,expense'],
         ]);
 
-        $typeMap = [
-            'income' => 'RECETTE',
-            'expense' => 'DEPENSE',
-        ];
-
         $categories = Category::query()
-            ->where('actif', true)
+            ->where('is_active', true)
             ->when(
                 array_key_exists('sector_id', $validated),
                 fn (Builder $query) => $query->where(function (Builder $query) use ($validated) {
-                    $query->where('id_secteur', $validated['sector_id'])
-                        ->orWhereNull('id_secteur');
+                    $query->where('sector_id', $validated['sector_id'])
+                        ->orWhereNull('sector_id');
                 }),
             )
             ->when(
                 array_key_exists('type', $validated),
                 fn (Builder $query) => $query->where(
-                    'type_operation',
-                    $typeMap[$validated['type']]
+                    'type',
+                    $validated['type']
                 ),
             )
-            ->orderBy('libelle')
+            ->orderBy('label')
             ->get()
-            ->map(fn (Category $category) => [
-                'id' => $category->id_categorie,
-                'sector_id' => $category->id_secteur,
-                'type' => $category->type_operation === 'RECETTE' ? 'income' : 'expense',
-                'label' => $category->libelle,
-                'is_active' => $category->actif,
+            ->map(fn ($category) => [
+                'id' => $category->id,
+                'sector_id' => $category->sector_id,
+                'type' => $category->type,
+                'label' => $category->label,
+                'is_active' => $category->is_active,
             ]);
 
         return response()->json(['data' => $categories]);

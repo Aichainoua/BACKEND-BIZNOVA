@@ -16,7 +16,7 @@ class ProjectAnalysisController extends Controller
     ): JsonResponse {
         $project = Auth::user()
             ->projects()
-            ->findOrFail($project->id_projet);
+            ->findOrFail($project->id);
 
         $results = $calculationService->calculate($project);
 

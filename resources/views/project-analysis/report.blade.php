@@ -71,8 +71,8 @@
     <h1>Rapport prévisionnel</h1>
 
     <div class="subtitle">
-        Projet : {{ $project->nom }}<br>
-        Devise : {{ $project->devise }}<br>
+        Projet : {{ $project->name }}<br>
+        Devise : {{ $project->currency }}<br>
         Date de génération : {{ $generatedAt->format('d/m/Y H:i') }}<br>
         Période : {{ \Carbon\Carbon::parse($periodStart)->format('d/m/Y') }}
         au
@@ -89,17 +89,17 @@
 
         <tr>
             <td>Investissement initial</td>
-            <td class="number">{{ number_format($analysis['summary']['initial_investment'], 2, ',', ' ') }} {{ $project->devise }}</td>
+            <td class="number">{{ number_format($analysis['summary']['initial_investment'], 2, ',', ' ') }} {{ $project->currency }}</td>
         </tr>
 
         <tr>
             <td>Chiffre d'affaires prévisionnel</td>
-            <td class="number">{{ number_format($analysis['summary']['total_revenue'], 2, ',', ' ') }} {{ $project->devise }}</td>
+            <td class="number">{{ number_format($analysis['summary']['total_revenue'], 2, ',', ' ') }} {{ $project->currency }}</td>
         </tr>
 
         <tr>
             <td>Total des charges</td>
-            <td class="number">{{ number_format($analysis['summary']['total_expenses'], 2, ',', ' ') }} {{ $project->devise }}</td>
+            <td class="number">{{ number_format($analysis['summary']['total_expenses'], 2, ',', ' ') }} {{ $project->currency }}</td>
         </tr>
 
         <tr>
@@ -129,7 +129,7 @@
             <td>Seuil de rentabilité mensuel</td>
             <td class="number">
                 {{ $analysis['summary']['break_even_monthly_revenue'] !== null
-                    ? number_format($analysis['summary']['break_even_monthly_revenue'], 2, ',', ' ') . ' ' . $project->devise
+                    ? number_format($analysis['summary']['break_even_monthly_revenue'], 2, ',', ' ') . ' ' . $project->currency
                     : 'Non calculable' }}
             </td>
         </tr>

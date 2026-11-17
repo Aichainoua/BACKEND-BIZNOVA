@@ -4,6 +4,9 @@ namespace App\Features\Identity\Models;
 
 use App\Features\BusinessFinance\Models\Company;
 use App\Features\ProjectAnalysis\Models\Project;
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -11,50 +14,39 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
-    protected $table = 'utilisateur';
-
-    protected $primaryKey = 'id_utilisateur';
-
-    public const CREATED_AT = 'date_creation';
-    public const UPDATED_AT = 'date_modification';
+    protected static function newFactory(): Factory
+    {
+        return UserFactory::new();
+    }
 
     protected $fillable = [
-        'nom',
-        'prenom',
+        'name',
+        'first_name',
+        'last_name',
         'email',
-        'mot_de_passe_hash',
+        'password',
     ];
 
     protected $hidden = [
-        'mot_de_passe_hash',
+        'password',
     ];
 
     protected function casts(): array
     {
         return [
-            'mot_de_passe_hash' => 'hashed',
+            'password' => 'hashed',
         ];
-    }
-
-    public function getAuthPasswordName(): string
-    {
-        return 'mot_de_passe_hash';
-    }
-
-    public function getAuthPassword(): string
-    {
-        return $this->mot_de_passe_hash;
     }
 
     public function projects(): HasMany
     {
-        return $this->hasMany(Project::class, 'id_utilisateur', 'id_utilisateur');
+        return $this->hasMany(Project::class);
     }
 
     public function companies(): HasMany
     {
-        return $this->hasMany(Company::class, 'id_utilisateur', 'id_utilisateur');
+        return $this->hasMany(Company::class);
     }
 }
