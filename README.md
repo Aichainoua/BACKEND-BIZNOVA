@@ -69,3 +69,7 @@ Endpoints:
 - `POST /api/v1/auth/logout` (authenticated)
 - `GET /api/v1/auth/profile` (authenticated)
 - `PATCH /api/v1/auth/profile` (authenticated)
+
+## API reference
+
+The OpenAPI 3.1 specification for all API routes is available in [`docs/openapi.yaml`](docs/openapi.yaml). Open it in Swagger UI or Swagger Editor to browse the endpoints and try authenticated requests. In Swagger UI, set the server URL to the API's base URL and use **Authorize** with the Sanctum bearer token returned by registration or login.

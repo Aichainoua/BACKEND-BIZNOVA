@@ -1,0 +1,1545 @@
+openapi: 3.1.0
+info:
+  title: Biznova API
+  version: 1.0.0
+  description: >-
+    API REST de Biznova. Les routes sont préfixées par `/api/v1`. Les ressources
+    métier et les projets sont limités aux données de l'utilisateur authentifié.
+servers:
+  - url: http://127.0.0.1:8000/api/v1
+    description: Serveur local Laravel
+tags:
+  - name: System
+  - name: Identity
+  - name: Reference data
+  - name: Projects
+  - name: Companies
+  - name: Operations
+  - name: Tags
+  - name: Budgets
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [System]
+      operationId: getHealth
+      summary: Vérifier l'état de l'API
+      security: []
+      responses:
+        '200':
+          description: API disponible
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+
+  /auth/register:
+    post:
+      tags: [Identity]
+      operationId: register
+      summary: Créer un compte et obtenir un jeton
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Compte créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/login:
+    post:
+      tags: [Identity]
+      operationId: login
+      summary: Ouvrir une session et obtenir un jeton
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentification réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Identifiants invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/logout:
+    post:
+      tags: [Identity]
+      operationId: logout
+      summary: Révoquer le jeton courant
+      responses:
+        '204':
+          description: Jeton révoqué
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/profile:
+    get:
+      tags: [Identity]
+      operationId: getProfile
+      summary: Consulter son profil
+      responses:
+        '200':
+          description: Profil de l'utilisateur authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: [Identity]
+      operationId: updateProfile
+      summary: Modifier son profil
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profil modifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /sectors:
+    get:
+      tags: [Reference data]
+      operationId: listSectors
+      summary: Lister les secteurs
+      responses:
+        '200':
+          description: Secteurs triés par libellé
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Sector'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /categories:
+    get:
+      tags: [Reference data]
+      operationId: listCategories
+      summary: Lister les catégories actives
+      parameters:
+        - name: sector_id
+          in: query
+          description: Inclut les catégories du secteur et les catégories globales.
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [income, expense]
+      responses:
+        '200':
+          description: Catégories correspondantes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /projects:
+    get:
+      tags: [Projects]
+      operationId: listProjects
+      summary: Lister ses projets
+      parameters:
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: Projets de l'utilisateur (15 par page)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProjects'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Projects]
+      operationId: createProject
+      summary: Créer un projet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+      responses:
+        '201':
+          description: Projet créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /projects/{project}:
+    parameters:
+      - name: project
+        in: path
+        required: true
+        description: Identifiant du projet
+        schema:
+          type: integer
+    get:
+      tags: [Projects]
+      operationId: getProject
+      summary: Consulter un de ses projets
+      responses:
+        '200':
+          description: Projet trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Projects]
+      operationId: replaceProject
+      summary: Mettre à jour un projet
+      description: Mise à jour partielle; les champs omis restent inchangés.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Projet modifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [Projects]
+      operationId: updateProject
+      summary: Mettre à jour partiellement un projet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Projet modifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Projects]
+      operationId: deleteProject
+      summary: Supprimer un projet
+      responses:
+        '204':
+          description: Projet supprimé
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /companies:
+    get:
+      tags: [Companies]
+      operationId: listCompanies
+      summary: Lister ses entreprises
+      parameters:
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: Entreprises de l'utilisateur (15 par page)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCompanies'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Companies]
+      operationId: createCompany
+      summary: Créer une entreprise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyRequest'
+      responses:
+        '201':
+          description: Entreprise créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /companies/{company}:
+    parameters:
+      - name: company
+        in: path
+        required: true
+        description: Identifiant de l'entreprise
+        schema:
+          type: integer
+    get:
+      tags: [Companies]
+      operationId: getCompany
+      summary: Consulter une de ses entreprises
+      responses:
+        '200':
+          description: Entreprise trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Companies]
+      operationId: replaceCompany
+      summary: Mettre à jour une entreprise
+      description: Mise à jour partielle; les champs omis restent inchangés.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCompanyRequest'
+      responses:
+        '200':
+          description: Entreprise modifiée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [Companies]
+      operationId: updateCompany
+      summary: Mettre à jour partiellement une entreprise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCompanyRequest'
+      responses:
+        '200':
+          description: Entreprise modifiée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Companies]
+      operationId: deleteCompany
+      summary: Supprimer une entreprise
+      responses:
+        '204':
+          description: Entreprise supprimée
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /companies/{company}/dashboard:
+    get:
+      tags: [Companies]
+      operationId: getCompanyDashboard
+      summary: Consulter le tableau de bord annuel
+      parameters:
+        - name: company
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: year
+          in: query
+          description: Année analysée, par défaut l'année courante.
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 32767
+      responses:
+        '200':
+          description: Totaux annuels, tendances mensuelles et répartitions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /companies/{company}/operations:
+    parameters:
+      - name: company
+        in: path
+        required: true
+        schema:
+          type: integer
+      - $ref: '#/components/parameters/Page'
+    get:
+      tags: [Operations]
+      operationId: listOperations
+      summary: Lister les opérations d'une entreprise
+      responses:
+        '200':
+          description: Opérations (15 par page), par date décroissante
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOperations'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Operations]
+      operationId: createOperation
+      summary: Créer une opération financière
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperationRequest'
+      responses:
+        '201':
+          description: Opération créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /companies/{company}/operations/{operation}:
+    parameters:
+      - name: company
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: operation
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [Operations]
+      operationId: getOperation
+      summary: Consulter une opération
+      responses:
+        '200':
+          description: Opération trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Operations]
+      operationId: replaceOperation
+      summary: Mettre à jour une opération
+      description: Mise à jour partielle; les champs omis restent inchangés.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOperationRequest'
+      responses:
+        '200':
+          description: Opération modifiée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [Operations]
+      operationId: updateOperation
+      summary: Mettre à jour partiellement une opération
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOperationRequest'
+      responses:
+        '200':
+          description: Opération modifiée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Operations]
+      operationId: deleteOperation
+      summary: Supprimer une opération
+      responses:
+        '204':
+          description: Opération supprimée
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /companies/{company}/tags:
+    parameters:
+      - name: company
+        in: path
+        required: true
+        schema:
+          type: integer
+      - $ref: '#/components/parameters/Page'
+    get:
+      tags: [Tags]
+      operationId: listTags
+      summary: Lister les étiquettes d'une entreprise
+      responses:
+        '200':
+          description: Étiquettes (15 par page), triées par libellé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTags'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Tags]
+      operationId: createTag
+      summary: Créer une étiquette
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagRequest'
+      responses:
+        '201':
+          description: Étiquette créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /companies/{company}/tags/{tag}:
+    parameters:
+      - name: company
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: tag
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [Tags]
+      operationId: getTag
+      summary: Consulter une étiquette
+      responses:
+        '200':
+          description: Étiquette trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Tags]
+      operationId: replaceTag
+      summary: Mettre à jour une étiquette
+      description: Mise à jour partielle; les champs omis restent inchangés.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTagRequest'
+      responses:
+        '200':
+          description: Étiquette modifiée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [Tags]
+      operationId: updateTag
+      summary: Mettre à jour partiellement une étiquette
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTagRequest'
+      responses:
+        '200':
+          description: Étiquette modifiée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Tags]
+      operationId: deleteTag
+      summary: Supprimer une étiquette
+      responses:
+        '204':
+          description: Étiquette supprimée
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /companies/{company}/budgets:
+    parameters:
+      - name: company
+        in: path
+        required: true
+        schema:
+          type: integer
+      - $ref: '#/components/parameters/Page'
+    get:
+      tags: [Budgets]
+      operationId: listBudgets
+      summary: Lister les budgets mensuels d'une entreprise
+      responses:
+        '200':
+          description: Budgets (15 par page), année et mois décroissants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBudgets'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Budgets]
+      operationId: createBudget
+      summary: Créer un budget mensuel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetRequest'
+      responses:
+        '201':
+          description: Budget créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /companies/{company}/budgets/{monthlyBudget}:
+    parameters:
+      - name: company
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: monthlyBudget
+        in: path
+        required: true
+        description: Identifiant du budget mensuel
+        schema:
+          type: integer
+    get:
+      tags: [Budgets]
+      operationId: getBudget
+      summary: Consulter un budget mensuel
+      responses:
+        '200':
+          description: Budget trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Budgets]
+      operationId: replaceBudget
+      summary: Mettre à jour un budget
+      description: Mise à jour partielle; les champs omis restent inchangés.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBudgetRequest'
+      responses:
+        '200':
+          description: Budget modifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [Budgets]
+      operationId: updateBudget
+      summary: Mettre à jour partiellement un budget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBudgetRequest'
+      responses:
+        '200':
+          description: Budget modifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Budgets]
+      operationId: deleteBudget
+      summary: Supprimer un budget
+      responses:
+        '204':
+          description: Budget supprimé
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum token
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Numéro de page (15 éléments par page).
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+  responses:
+    Unauthorized:
+      description: Jeton Bearer absent ou invalide
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageResponse'
+    NotFound:
+      description: Ressource inexistante ou inaccessible à cet utilisateur
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageResponse'
+    ValidationError:
+      description: Données invalides
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+  schemas:
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+    ValidationError:
+      type: object
+      required: [message, errors]
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    User:
+      type: object
+      required: [id, first_name, last_name, email, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+        created_at:
+          type: [string, 'null']
+          format: date-time
+        updated_at:
+          type: [string, 'null']
+          format: date-time
+    UserResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/User'
+    RegisterRequest:
+      type: object
+      required: [first_name, last_name, email, password, password_confirmation, device_name]
+      properties:
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 190
+        password:
+          type: string
+          format: password
+          minLength: 8
+        password_confirmation:
+          type: string
+          format: password
+        device_name:
+          type: string
+          maxLength: 100
+    LoginRequest:
+      type: object
+      required: [email, password, device_name]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 190
+        password:
+          type: string
+          format: password
+        device_name:
+          type: string
+          maxLength: 100
+    UpdateProfileRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 190
+    TokenResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [user, access_token, token_type]
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            access_token:
+              type: string
+            token_type:
+              type: string
+              const: Bearer
+    Sector:
+      type: object
+      required: [id, code, label]
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          description: Code renvoyé en minuscules.
+        label:
+          type: string
+    Category:
+      type: object
+      required: [id, sector_id, type, label, is_active]
+      properties:
+        id:
+          type: integer
+        sector_id:
+          type: [integer, 'null']
+        type:
+          type: string
+          enum: [income, expense]
+        label:
+          type: string
+        is_active:
+          type: boolean
+    Company:
+      type: object
+      required: [id, sector_id, name, currency, opening_balance, opening_balance_date, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        sector_id:
+          type: integer
+        name:
+          type: string
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        opening_balance:
+          type: string
+          description: Montant décimal renvoyé avec deux décimales.
+          example: '5000.00'
+        opening_balance_date:
+          type: string
+          format: date
+        created_at:
+          type: [string, 'null']
+          format: date-time
+        updated_at:
+          type: [string, 'null']
+          format: date-time
+    CompanyRequest:
+      type: object
+      required: [sector_id, name, opening_balance, opening_balance_date]
+      properties:
+        sector_id:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          maxLength: 150
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: XAF
+        opening_balance:
+          type: number
+          minimum: 0
+        opening_balance_date:
+          type: string
+          format: date
+    UpdateCompanyRequest:
+      type: object
+      description: Tous les champs sont facultatifs; les champs fournis doivent être valides.
+      properties:
+        sector_id:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          maxLength: 150
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        opening_balance:
+          type: number
+          minimum: 0
+        opening_balance_date:
+          type: string
+          format: date
+    CompanyResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Company'
+    PaginatedCompanies:
+      type: object
+      required: [data, links, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Company'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    PaginationLinks:
+      type: object
+      properties:
+        first:
+          type: [string, 'null']
+          format: uri
+        last:
+          type: [string, 'null']
+          format: uri
+        prev:
+          type: [string, 'null']
+          format: uri
+        next:
+          type: [string, 'null']
+          format: uri
+    PaginationMeta:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        from:
+          type: [integer, 'null']
+        last_page:
+          type: integer
+        path:
+          type: string
+        per_page:
+          type: integer
+        to:
+          type: [integer, 'null']
+        total:
+          type: integer
+    Project:
+      type: object
+      required: [id, sector_id, name, launch_date, horizon_months, country, currency, activity_mode, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        sector_id:
+          type: integer
+        name:
+          type: string
+        launch_date:
+          type: string
+          format: date
+        horizon_months:
+          type: integer
+          minimum: 6
+          maximum: 60
+        country:
+          type: [string, 'null']
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        activity_mode:
+          type: string
+          enum: [global, detailed]
+        created_at:
+          type: [string, 'null']
+          format: date-time
+        updated_at:
+          type: [string, 'null']
+          format: date-time
+    ProjectRequest:
+      type: object
+      required: [sector_id, name, launch_date, activity_mode]
+      properties:
+        sector_id:
+          type: integer
+        name:
+          type: string
+          maxLength: 150
+        launch_date:
+          type: string
+          format: date
+        horizon_months:
+          type: integer
+          minimum: 6
+          maximum: 60
+          default: 12
+        country:
+          type: [string, 'null']
+          maxLength: 100
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: XAF
+        activity_mode:
+          type: string
+          enum: [global, detailed]
+          description: Les valeurs `GLOBAL` et `DETAILLE` sont également acceptées.
+    UpdateProjectRequest:
+      type: object
+      properties:
+        sector_id:
+          type: integer
+        name:
+          type: string
+          maxLength: 150
+        launch_date:
+          type: string
+          format: date
+        horizon_months:
+          type: integer
+          minimum: 6
+          maximum: 60
+        country:
+          type: [string, 'null']
+          maxLength: 100
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        activity_mode:
+          type: string
+          enum: [global, detailed]
+          description: Les valeurs `GLOBAL` et `DETAILLE` sont également acceptées.
+    ProjectResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Project'
+    PaginatedProjects:
+      type: object
+      required: [data, links, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    Operation:
+      type: object
+      required: [id, company_id, category_id, amount, operation_date, description, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        company_id:
+          type: integer
+        category_id:
+          type: integer
+        amount:
+          type: string
+          description: Montant décimal positif à deux décimales.
+          example: '1200.00'
+        operation_date:
+          type: string
+          format: date
+        description:
+          type: [string, 'null']
+        created_at:
+          type: [string, 'null']
+          format: date-time
+        updated_at:
+          type: [string, 'null']
+          format: date-time
+    OperationRequest:
+      type: object
+      required: [category_id, amount, operation_date]
+      properties:
+        category_id:
+          type: integer
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        operation_date:
+          type: string
+          format: date
+        description:
+          type: [string, 'null']
+    UpdateOperationRequest:
+      type: object
+      properties:
+        category_id:
+          type: integer
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        operation_date:
+          type: string
+          format: date
+        description:
+          type: [string, 'null']
+    OperationResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Operation'
+    PaginatedOperations:
+      type: object
+      required: [data, links, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Operation'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    Tag:
+      type: object
+      required: [id, company_id, label, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        company_id:
+          type: integer
+        label:
+          type: string
+        created_at:
+          type: [string, 'null']
+          format: date-time
+        updated_at:
+          type: [string, 'null']
+          format: date-time
+    TagRequest:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          maxLength: 80
+    UpdateTagRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          maxLength: 80
+    TagResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Tag'
+    PaginatedTags:
+      type: object
+      required: [data, links, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    Budget:
+      type: object
+      required: [id, company_id, year, month, amount, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        company_id:
+          type: integer
+        year:
+          type: integer
+          minimum: 2000
+          maximum: 32767
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+        amount:
+          type: string
+          description: Montant décimal positif ou nul.
+          example: '20000.00'
+        created_at:
+          type: [string, 'null']
+          format: date-time
+        updated_at:
+          type: [string, 'null']
+          format: date-time
+    BudgetRequest:
+      type: object
+      required: [year, month, amount]
+      properties:
+        year:
+          type: integer
+          minimum: 2000
+          maximum: 32767
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+        amount:
+          type: number
+          minimum: 0
+      description: Une seule ligne de budget est autorisée par entreprise, année et mois.
+    UpdateBudgetRequest:
+      type: object
+      properties:
+        year:
+          type: integer
+          minimum: 2000
+          maximum: 32767
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+        amount:
+          type: number
+          minimum: 0
+    BudgetResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Budget'
+    PaginatedBudgets:
+      type: object
+      required: [data, links, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Budget'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    DashboardResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [year, totals, monthly_trends, category_breakdown, budget_comparison, tag_breakdown]
+          properties:
+            year:
+              type: integer
+            totals:
+              $ref: '#/components/schemas/FinancialTotals'
+            monthly_trends:
+              type: array
+              minItems: 12
+              maxItems: 12
+              items:
+                $ref: '#/components/schemas/MonthlyTrend'
+            category_breakdown:
+              type: array
+              items:
+                $ref: '#/components/schemas/CategoryBreakdown'
+            budget_comparison:
+              type: array
+              minItems: 12
+              maxItems: 12
+              items:
+                $ref: '#/components/schemas/BudgetComparison'
+            tag_breakdown:
+              type: array
+              items:
+                $ref: '#/components/schemas/TagBreakdown'
+    FinancialTotals:
+      type: object
+      required: [income, expenses, net]
+      properties:
+        income:
+          type: string
+          example: '6000.00'
+        expenses:
+          type: string
+          example: '4000.00'
+        net:
+          type: string
+          example: '2000.00'
+    MonthlyTrend:
+      type: object
+      required: [month, income, expenses, net]
+      properties:
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+        income:
+          type: string
+        expenses:
+          type: string
+        net:
+          type: string
+    CategoryBreakdown:
+      type: object
+      required: [category_id, category, type, total]
+      properties:
+        category_id:
+          type: integer
+        category:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        total:
+          type: string
+    BudgetComparison:
+      type: object
+      required: [month, budgeted, expenses]
+      properties:
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+        budgeted:
+          type: string
+        expenses:
+          type: string
+    TagBreakdown:
+      type: object
+      required: [tag_id, label, income, expenses]
+      properties:
+        tag_id:
+          type: integer
+        label:
+          type: string
+        income:
+          type: string
+        expenses:
+          type: string
