@@ -10,6 +10,8 @@ use App\Features\Identity\Http\Controllers\ProfileController;
 use App\Features\ProjectAnalysis\Http\Controllers\ProjectController;
 use App\Features\ProjectAnalysis\Http\Controllers\ProjectHypothesesController;
 use App\Features\ReferenceData\Http\Controllers\ReferenceDataController;
+use App\Features\ProjectAnalysis\Http\Controllers\ProjectAnalysisController;
+use App\Features\ProjectAnalysis\Http\Controllers\ProjectReportController;
 use App\Features\System\Http\Controllers\HealthController;
 use Illuminate\Support\Facades\Route;
 
@@ -54,5 +56,11 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('companies.tags', TagController::class);
         Route::apiResource('companies.budgets', MonthlyBudgetController::class)
             ->parameters(['budgets' => 'monthlyBudget']);
+
+        
+        Route::get('projects/{project}/analysis', [ProjectAnalysisController::class, 'show']);
+        Route::get('projects/{project}/reports', [ProjectReportController::class, 'index']);
+        Route::post('projects/{project}/reports', [ProjectReportController::class, 'store']);
+        Route::get('projects/{project}/reports/{report}/download',[ProjectReportController::class, 'download']);
     });
 });

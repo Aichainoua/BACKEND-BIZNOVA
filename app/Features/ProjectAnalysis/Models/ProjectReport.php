@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProjectReport extends Model
 {
     protected $table = 'rapport_projet';
+
     protected $primaryKey = 'id_rapport_projet';
 
     public $timestamps = false;
@@ -35,6 +36,19 @@ class ProjectReport extends Model
 
     public function project(): BelongsTo
     {
-        return $this->belongsTo(Project::class, 'id_projet', 'id_projet');
+        return $this->belongsTo(
+            Project::class,
+            'id_projet',
+            'id_projet'
+        );
     }
+
+    public function reports(): HasMany
+{
+    return $this->hasMany(
+        ProjectReport::class,
+        'id_projet',
+        'id_projet'
+    );
+}
 }
