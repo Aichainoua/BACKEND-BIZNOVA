@@ -8,14 +8,19 @@ use App\Features\BusinessFinance\Http\Controllers\TagController;
 use App\Features\Identity\Http\Controllers\AuthController;
 use App\Features\Identity\Http\Controllers\ProfileController;
 use App\Features\ProjectAnalysis\Http\Controllers\ProjectController;
+use App\Features\ProjectAnalysis\Http\Controllers\ProjectHypothesesController;
 use App\Features\ReferenceData\Http\Controllers\ReferenceDataController;
 use App\Features\System\Http\Controllers\HealthController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
-    Route::get('/health', HealthController::class)->name('system.health');
 
+    Route::get('/health', HealthController::class)
+        ->name('system.health');
+
+    
     Route::prefix('auth')->name('auth.')->group(function (): void {
+
         Route::middleware('throttle:auth')->group(function (): void {
             Route::post('/register', [AuthController::class, 'register'])->name('register');
             Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -28,10 +33,20 @@ Route::prefix('v1')->group(function (): void {
         });
     });
 
+    
     Route::middleware('auth:sanctum')->group(function (): void {
+
+        
         Route::get('/sectors', [ReferenceDataController::class, 'sectors'])->name('sectors.index');
         Route::get('/categories', [ReferenceDataController::class, 'categories'])->name('categories.index');
+
+        
         Route::apiResource('projects', ProjectController::class);
+
+        Route::get('projects/{project}/hypotheses', [ProjectHypothesesController::class, 'show']);
+        Route::put('projects/{project}/hypotheses', [ProjectHypothesesController::class, 'update']);
+
+        
         Route::apiResource('companies', CompanyController::class);
         Route::get('/companies/{company}/dashboard', CompanyDashboardController::class)
             ->name('companies.dashboard');
