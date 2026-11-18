@@ -1,9 +1,17 @@
 FROM php:8.4-fpm-bookworm AS app
 
+# Installation des dépendances système + extensions PHP
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq-dev \
-    && docker-php-ext-install -j"$(nproc)" opcache pdo_pgsql \
+    && apt-get install -y --no-install-recommends \
+        libpq-dev \
+        libzip-dev \
+        unzip \
+        git \
+    && docker-php-ext-install -j"$(nproc)" opcache pdo_pgsql zip \
     && rm -rf /var/lib/apt/lists/*
+
+# Autoriser Composer à tourner en root (conteneur Docker)
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -28,6 +36,7 @@ RUN composer dump-autoload --no-dev --optimize --no-interaction \
 EXPOSE 9000
 
 CMD ["php-fpm"]
+
 
 FROM nginx:1.29-alpine AS web
 
