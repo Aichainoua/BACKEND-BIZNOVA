@@ -3,7 +3,6 @@
 # ==============================================
 FROM dunglas/frankenphp:php8.4 AS base
 
-# Extensions PHP nécessaires pour Laravel + PostgreSQL
 RUN install-php-extensions \
     pdo_pgsql \
     zip \
@@ -11,53 +10,48 @@ RUN install-php-extensions \
     pcntl
 
 # ==============================================
-# Stage 2 : builder (composer install)
+# Stage 2 : builder
 # ==============================================
 FROM base AS builder
 
 WORKDIR /app
 
-# 🆕 Composer n'est pas inclus dans dunglas/frankenphp — on le copie
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY composer.json composer.lock ./
 
-# 🆕 Autoriser Composer à tourner en root (conteneur Docker)
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
+# 🆕 --no-scripts : n'exécute PAS post-install / package:discover ici
+# 🆕 --no-autoloader : génère l'autoload APRÈS le COPY . . (voir plus bas)
 RUN composer install \
     --no-dev \
     --no-interaction \
     --no-progress \
-    --prefer-dist \
-    --optimize-autoloader
+    --no-scripts \
+    --no-autoloader \
+    --prefer-dist
 
-# Code source après les dépendances (profite du cache Docker)
+# 🆕 Le code source arrive APRÈS composer install (cache Docker préservé)
 COPY . .
 
-# Régénère l'autoloader optimisé après ajout des classes du projet
+# 🆕 Maintenant que artisan et le code existent, on régénère l'autoloader
+#    Cela déclenche package:discover correctement
 RUN composer dump-autoload --no-dev --optimize --no-interaction
 
 # ==============================================
-# Stage 3 : image finale de production
+# Stage 3 : image finale
 # ==============================================
 FROM base
 
 WORKDIR /app
 
-# Récupération de l'app buildée (code + vendor + autoload optimisé)
 COPY --from=builder --chown=www-data:www-data /app /app
 
-# Permissions Laravel
 RUN chown -R www-data:www-data \
         /app/storage \
         /app/bootstrap/cache
 
-# FrankenPHP lit SERVER_NAME pour savoir sur quel port écouter.
-# Railway injecte $PORT dans le conteneur.
 ENV SERVER_NAME=":${PORT:-8080}"
 
 EXPOSE 8080
-
-# CMD par défaut de l'image : "frankenphp run"
-# Il utilise le Caddyfile par défaut qui sert /app/public
