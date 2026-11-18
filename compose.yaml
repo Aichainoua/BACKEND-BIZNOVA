@@ -7,7 +7,7 @@ services:
       APP_ENV: production
       APP_KEY: ${APP_KEY:?Set APP_KEY in the root .env file}
       APP_DEBUG: "false"
-      APP_URL: ${APP_URL:-http://localhost:8080}
+      APP_URL: ${APP_URL:?Set APP_URL (https://api.votre-domaine.com)}
       LOG_CHANNEL: stderr
       DB_CONNECTION: pgsql
       DB_HOST: db
@@ -18,20 +18,82 @@ services:
       SESSION_DRIVER: database
       CACHE_STORE: database
       QUEUE_CONNECTION: database
+    volumes:
+      - app_storage:/var/www/html/storage/app/public
+    networks:
+      - internal
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "php-fpm-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
 
   web:
     build:
       context: .
       target: web
-    ports:
-      - "${APP_PORT:-8080}:80"
+    # ❌ Plus de ports: — Traefik gère l'accès externe
+    networks:
+      - internal
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.biznova-api.rule=Host(`api.votre-domaine.com`)"
+      - "traefik.http.routers.biznova-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.biznova-api.loadbalancer.server.port=80"
     depends_on:
       app:
         condition: service_started
+    restart: unless-stopped
+
+  queue:
+    build:
+      context: .
+      target: app
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    environment:
+      APP_ENV: production
+      APP_KEY: ${APP_KEY:?Set APP_KEY in the root .env file}
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-vision_finance_backend}
+      DB_USERNAME: ${DB_USERNAME:-biznova}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the root .env file}
+      QUEUE_CONNECTION: database
+    volumes:
+      - app_storage:/var/www/html/storage/app/public
+    networks:
+      - internal
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: .
+      target: app
+    command: ["sh", "-c", "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"]
+    environment:
+      APP_ENV: production
+      APP_KEY: ${APP_KEY:?Set APP_KEY in the root .env file}
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-vision_finance_backend}
+      DB_USERNAME: ${DB_USERNAME:-biznova}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the root .env file}
+    networks:
+      - internal
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   db:
@@ -47,7 +109,16 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - internal
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  app_storage:
+
+networks:
+  internal:
+    driver: bridge
+  traefik-public:
+    external: true
