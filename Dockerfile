@@ -1,46 +1,48 @@
-FROM php:8.4-fpm-bookworm AS app
+# Dockerfile
+# --- Étape 1 : Build (installation des dépendances et compilation des assets) ---
+FROM dunglas/frankenphp:php8.4 AS builder
 
-# Installation des dépendances système + extensions PHP
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        libpq-dev \
-        libzip-dev \
-        unzip \
-        git \
-    && docker-php-ext-install -j"$(nproc)" opcache pdo_pgsql zip \
-    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
-# Autoriser Composer à tourner en root (conteneur Docker)
-ENV COMPOSER_ALLOW_SUPERUSER=1
+# Installation des extensions PHP nécessaires (pdo_pgsql pour PostgreSQL, etc.)
+RUN install-php-extensions \
+    pdo_pgsql \
+    zip \
+    opcache \
+    pcntl
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-WORKDIR /var/www/html
-
+# Copie des fichiers de dépendances pour profiter du cache Docker
 COPY composer.json composer.lock ./
 
+# Installation des dépendances sans les paquets de dev
 RUN composer install \
     --no-dev \
     --no-interaction \
     --no-progress \
-    --no-scripts \
-    --no-autoloader \
-    --prefer-dist
+    --prefer-dist \
+    --optimize-autoloader
 
-COPY --chown=www-data:www-data . .
-COPY docker/php/zz-env.conf /usr/local/etc/php-fpm.d/zz-env.conf
+# Copie du reste du code source
+COPY . .
 
-RUN composer dump-autoload --no-dev --optimize --no-interaction \
-    && chown -R www-data:www-data storage bootstrap/cache
+# Construction des assets frontend (si vous utilisez Vite/Tailwind)
+# RUN npm ci && npm run build
 
-EXPOSE 9000
+# --- Étape 2 : Image de production finale ---
+FROM dunglas/frankenphp:php8.4
 
-CMD ["php-fpm"]
+WORKDIR /app
 
+# Récupération de l'application déjà buildée depuis l'étape précédente
+COPY --from=builder /app /app
 
-FROM nginx:1.29-alpine AS web
+# Définition du serveur FrankenPHP pour écouter sur le port fourni par Railway
+# Railway injecte la variable $PORT, on l'utilise pour la configuration de Caddy
+ENV SERVER_NAME=":${PORT:-8080}"
 
-COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
-COPY --from=app /var/www/html/public /var/www/html/public
+# Exposition du port (documentation, Railway utilise $PORT)
+EXPOSE 8080
 
-EXPOSE 80
+# Commande de démarrage : FrankenPHP sert l'application Laravel
+# Le Caddyfile est optionnel si on utilise les valeurs par défaut de FrankenPHP pour Laravel
+CMD ["frankenphp", "php-server", "-r", "public/"]
