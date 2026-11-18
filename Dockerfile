@@ -1,20 +1,30 @@
-# Dockerfile
-# --- Étape 1 : Build (installation des dépendances et compilation des assets) ---
-FROM dunglas/frankenphp:php8.4 AS builder
+# ==============================================
+# Stage 1 : base commune avec extensions PHP
+# ==============================================
+FROM dunglas/frankenphp:php8.4 AS base
 
-WORKDIR /app
-
-# Installation des extensions PHP nécessaires (pdo_pgsql pour PostgreSQL, etc.)
+# Extensions PHP nécessaires pour Laravel + PostgreSQL
 RUN install-php-extensions \
     pdo_pgsql \
     zip \
     opcache \
     pcntl
 
-# Copie des fichiers de dépendances pour profiter du cache Docker
+# ==============================================
+# Stage 2 : builder (composer install)
+# ==============================================
+FROM base AS builder
+
+WORKDIR /app
+
+# 🆕 Composer n'est pas inclus dans dunglas/frankenphp — on le copie
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 COPY composer.json composer.lock ./
 
-# Installation des dépendances sans les paquets de dev
+# 🆕 Autoriser Composer à tourner en root (conteneur Docker)
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
 RUN composer install \
     --no-dev \
     --no-interaction \
@@ -22,27 +32,32 @@ RUN composer install \
     --prefer-dist \
     --optimize-autoloader
 
-# Copie du reste du code source
+# Code source après les dépendances (profite du cache Docker)
 COPY . .
 
-# Construction des assets frontend (si vous utilisez Vite/Tailwind)
-# RUN npm ci && npm run build
+# Régénère l'autoloader optimisé après ajout des classes du projet
+RUN composer dump-autoload --no-dev --optimize --no-interaction
 
-# --- Étape 2 : Image de production finale ---
-FROM dunglas/frankenphp:php8.4
+# ==============================================
+# Stage 3 : image finale de production
+# ==============================================
+FROM base
 
 WORKDIR /app
 
-# Récupération de l'application déjà buildée depuis l'étape précédente
-COPY --from=builder /app /app
+# Récupération de l'app buildée (code + vendor + autoload optimisé)
+COPY --from=builder --chown=www-data:www-data /app /app
 
-# Définition du serveur FrankenPHP pour écouter sur le port fourni par Railway
-# Railway injecte la variable $PORT, on l'utilise pour la configuration de Caddy
+# Permissions Laravel
+RUN chown -R www-data:www-data \
+        /app/storage \
+        /app/bootstrap/cache
+
+# FrankenPHP lit SERVER_NAME pour savoir sur quel port écouter.
+# Railway injecte $PORT dans le conteneur.
 ENV SERVER_NAME=":${PORT:-8080}"
 
-# Exposition du port (documentation, Railway utilise $PORT)
 EXPOSE 8080
 
-# Commande de démarrage : FrankenPHP sert l'application Laravel
-# Le Caddyfile est optionnel si on utilise les valeurs par défaut de FrankenPHP pour Laravel
-CMD ["frankenphp", "php-server", "-r", "public/"]
+# CMD par défaut de l'image : "frankenphp run"
+# Il utilise le Caddyfile par défaut qui sert /app/public
